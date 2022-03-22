@@ -11,6 +11,24 @@ export function activate(context: vscode.ExtensionContext) {
 	let disposable = vscode.commands.registerCommand('sampleextension.helloWorld', () => {
 		vscode.window.showInformationMessage('Hello Poorna');
 		getFunctionDefinitions();
+		
+		let optionsA = ["apple", "almond"];
+		let optionsB = ["Ball", "Bat"];
+		let optionsC = ["cat", "dog"]
+		let quickPick = vscode.window.createQuickPick();
+		quickPick.onDidChangeValue((search) => {
+			if(search.charAt(0) == 'a'){
+				quickPick.items = optionsA.map(op => ({label: op}));
+			}
+			else if(search.charAt(0) == 'b'){
+				quickPick.items = optionsB.map(op => ({label: op}))
+			}
+			else{
+				quickPick.items = optionsC.map(op => ({label: op}));
+			}
+		});
+		quickPick.show();
+		console.log(quickPick);
 	});
 
 	context.subscriptions.push(disposable);
