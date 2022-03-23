@@ -1,9 +1,94 @@
+"use strict";
+import * as net from "net";
+import * as path from "path";
+import { resolve } from "path";
+import { off } from "process";
 import * as vscode from 'vscode';
+import { ExtensionContext, ExtensionMode, workspace } from "vscode";
+import {
+    LanguageClient,
+    LanguageClientOptions,
+    ServerOptions,
+} from "vscode-languageclient/node";
+
+let client: LanguageClient;
+
+function getClientOptions(): LanguageClientOptions
+{
+    return {
+        documentSelector: [
+            {
+                scheme: "file", language: "python"
+            },
+            {
+                scheme: "untitled", language: "python"
+            },
+        ],
+		outputChannelName: "[pygls] PythonLanguageServer",
+		synchronize:
+		{
+			fileEvents: workspace.createFileSystemWatcher("**/.clientrc"),
+		},
+    };
+}
+
+function startLanguageServerTCP(addr: number): LanguageClient
+{
+	const serveroptions: ServerOptions = () =>{
+		return new Promise((resolve) => 
+		{
+			const clientSocket = new net.Socket();
+			clientSocket.connect(addr,"127.0.0.1", ()=>{
+				resolve({
+					reader: clientSocket,
+					writer: clientSocket,
+				});
+			});
+		});
+	};
+
+	return new LanguageClient(
+		`tcp lang server (port ${addr})`,
+		serveroptions,
+		getClientOptions()
+	);
+}
+
+function startLangServer(
+	command: string,
+	args: string[],
+	cwd: string
+): LanguageClient {
+	const serveroptions: ServerOptions = {
+		args, command, options: { cwd },
+	};
+	return new LanguageClient(command, serveroptions, getClientOptions());
+}
 
 //This map contains the map between function names and function descriptions of the current file
 let functionDefinitionMap = new Map();
 
-export function activate(context: vscode.ExtensionContext) {
+export function activate(context: vscode.ExtensionContext): void {
+
+	if( context.extensionMode === ExtensionMode.Development ){
+		client = startLanguageServerTCP(2087);
+		console.log("server run manually");
+	}
+
+	else{
+		const cwd = path.join(__dirname, "..", "..");
+		const pythonPath = workspace.getConfiguration("python").get<string>("pythonPath");
+		
+		if( !pythonPath) 
+		{
+			throw new Error("`python.pythonPath` is not set");
+		}
+
+		client = startLangServer(pythonPath, ["-m", "server"], cwd);
+		console.log("Server run production");
+	}
+
+	context.subscriptions.push(client.start());
 
 	//call the function hello world to refetch the function definitions
 	//TODO: if the function definitions is changed then, how to update the map
@@ -11,17 +96,17 @@ export function activate(context: vscode.ExtensionContext) {
 	let disposable = vscode.commands.registerCommand('sampleextension.helloWorld', () => {
 		vscode.window.showInformationMessage('Hello Poorna');
 		getFunctionDefinitions();
-		
+
 		let optionsA = ["apple", "almond"];
 		let optionsB = ["Ball", "Bat"];
-		let optionsC = ["cat", "dog"]
+		let optionsC = ["cat", "dog"];
 		let quickPick = vscode.window.createQuickPick();
 		quickPick.onDidChangeValue((search) => {
-			if(search.charAt(0) == 'a'){
+			if(search.charAt(0) === 'a'){
 				quickPick.items = optionsA.map(op => ({label: op}));
 			}
-			else if(search.charAt(0) == 'b'){
-				quickPick.items = optionsB.map(op => ({label: op}))
+			else if(search.charAt(0) === 'b'){
+				quickPick.items = optionsB.map(op => ({label: op}));
 			}
 			else{
 				quickPick.items = optionsC.map(op => ({label: op}));
