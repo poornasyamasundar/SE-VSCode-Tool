@@ -2,7 +2,7 @@
 import * as net from "net";
 import * as path from "path";
 import { resolve } from "path";
-import { off } from "process";
+import { off, setMaxListeners } from "process";
 import * as vscode from 'vscode';
 import { ExtensionContext, ExtensionMode, workspace } from "vscode";
 import {
@@ -93,6 +93,11 @@ export function activate(context: vscode.ExtensionContext): void {
 	//call the function hello world to refetch the function definitions
 	//TODO: if the function definitions is changed then, how to update the map
 	console.log('Congratulations, your extension "sampleextension" is now active!');
+	let disposable0 = vscode.commands.registerCommand('sampleextension.fetch', () => {
+		vscode.window.showInformationMessage('fetch');
+		//test(context);	
+	});
+	context.subscriptions.push(disposable0);
 	let disposable = vscode.commands.registerCommand('sampleextension.helloWorld', () => {
 		vscode.window.showInformationMessage('Hello Poorna');
 		getFunctionDefinitions();
@@ -101,19 +106,36 @@ export function activate(context: vscode.ExtensionContext): void {
 		let optionsB = ["Ball", "Bat"];
 		let optionsC = ["cat", "dog"];
 		let quickPick = vscode.window.createQuickPick();
-		quickPick.onDidChangeValue((search) => {
-			if(search.charAt(0) === 'a'){
-				quickPick.items = optionsA.map(op => ({label: op}));
+		quickPick.matchOnDescription = true;
+		quickPick.onDidChangeValue( async (search) => {
+			let u = vscode.Uri.joinPath(context.globalStorageUri, "/poorna");
+			let params:string[] = [];
+			functionDefinitionMap.forEach((value: string, key: string) => 
+			{
+				params.push(key);
+				params.push(value);
+			});
+			console.log(params);
+			let result: string[] = await vscode.commands.executeCommand(
+				'helloPoorna',
+				u.path,
+				params,
+				search,
+			);
+			console.log("final result + " , result);
+			let functs = [];
+			let showitems = [];
+			for( let i = 0 ; i < result.length ; i++ )
+			{
+				if( i % 2 === 0 )
+				{
+					showitems.push(({label: result[i], description: result[i+1]}));
+				}
 			}
-			else if(search.charAt(0) === 'b'){
-				quickPick.items = optionsB.map(op => ({label: op}));
-			}
-			else{
-				quickPick.items = optionsC.map(op => ({label: op}));
-			}
+			let s = showitems.map(op => ({label: op.label, description: op.description}));
+			quickPick.items = s;
 		});
 		quickPick.show();
-		console.log(quickPick);
 	});
 
 	context.subscriptions.push(disposable);
@@ -136,7 +158,26 @@ export function activate(context: vscode.ExtensionContext): void {
 		}
 	});
 }
-
+/*
+async function setList(context: ExtensionContext)
+{
+	let u = vscode.Uri.joinPath(context.globalStorageUri, "/poorna");
+	let params:string[] = [];
+	functionDefinitionMap.forEach((value: string, key: string) => 
+	{
+		params.push(key);
+		params.push(value);
+	});
+	console.log(params);
+	let result: string[] = await vscode.commands.executeCommand(
+		'helloPoorna',
+		u.path,
+		params,
+		"links",
+	);
+	quickPick.items = result.map(op => ({label: op}));
+}
+*/
 //This function populates the function definition map
 async function getFunctionDefinitions()
 {

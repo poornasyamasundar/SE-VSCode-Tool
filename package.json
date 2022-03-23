@@ -22,6 +22,10 @@
 			{
 				"command": "helloPoorna",
 				"title": "Say hello to poorna"
+			},
+			{
+				"command": "sampleextension.fetch",
+				"title": "Fetch definitions"
 			}
 		]
 	},
