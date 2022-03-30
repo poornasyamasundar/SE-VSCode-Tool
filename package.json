@@ -10,10 +10,32 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:sampleextension.helloWorld"
+		"onView:sampleextension-sidebar",
+		"onCommand:sampleextension.helloWorld",
+		"onCommand:sampleextension.searchWorld"
 	],
 	"main": "./client/out/extension.js",
 	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "sampleextension-sidebar-view",
+					"title": "sampleextension",
+					"icon": "client/media/logo.svg"
+				}
+			]
+		},
+		"views": {
+			"sampleextension-sidebar-view": [
+				{
+					"type": "webview",
+					"id": "sampleextension-sidebar",
+					"name": "sampleextension",
+					"icon": "client/media/logo.svg",
+					"contextualTitle": "sampleextension"
+				}
+			]
+		},
 		"commands": [
 			{
 				"command": "sampleextension.helloWorld",
@@ -26,6 +48,10 @@
 			{
 				"command": "sampleextension.fetch",
 				"title": "Fetch definitions"
+			},
+			{
+				"command": "sampleextension.searchWorld",
+				"title": "Webview"
 			}
 		]
 	},
@@ -48,6 +74,9 @@
 		"@vscode/test-electron": "^2.1.2"
 	},
 	"dependencies": {
+		"concurrently": "^7.0.0",
+		"rollup": "^2.70.1",
+		"svelte": "^3.46.4",
 		"vscode-languageclient": "^7.0.0"
 	}
 }

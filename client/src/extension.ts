@@ -10,6 +10,8 @@ import {
     LanguageClientOptions,
     ServerOptions,
 } from "vscode-languageclient/node";
+import { SearchWorldPanel } from "./SearchWorldPanel";
+import {SidebarProvider} from "./SidebarProvider";
 
 let client: LanguageClient;
 
@@ -70,6 +72,7 @@ let functionDefinitionMap = new Map();
 
 export function activate(context: vscode.ExtensionContext): void {
 
+
 	if( context.extensionMode === ExtensionMode.Development ){
 		client = startLanguageServerTCP(2087);
 		console.log("server run manually");
@@ -88,8 +91,15 @@ export function activate(context: vscode.ExtensionContext): void {
 		console.log("Server run production");
 	}
 
-	context.subscriptions.push(client.start());
 
+	
+	context.subscriptions.push(client.start());
+	
+	const sidebarProvider = new SidebarProvider(context.extensionUri);
+	context.subscriptions.push(
+		vscode.window.registerWebviewViewProvider("sampleextension-sidebar",sidebarProvider)
+		);
+	
 	//call the function hello world to refetch the function definitions
 	//TODO: if the function definitions is changed then, how to update the map
 	console.log('Congratulations, your extension "sampleextension" is now active!');
@@ -139,6 +149,14 @@ export function activate(context: vscode.ExtensionContext): void {
 	});
 
 	context.subscriptions.push(disposable);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('sampleextension.searchWorld',()=>{
+			SearchWorldPanel.createOrShow(context.extensionUri);
+			vscode.window.showInformationMessage('Hello');
+
+		})
+	);
 
 	//This provides the hover.
 	vscode.languages.registerHoverProvider('python', {
