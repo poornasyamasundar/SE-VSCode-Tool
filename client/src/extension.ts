@@ -10,6 +10,7 @@ import {
     LanguageClientOptions,
     ServerOptions,
 } from "vscode-languageclient/node";
+import { SearchWorldPanel } from "./SearchWorldPanel";
 
 let client: LanguageClient;
 
@@ -139,6 +140,14 @@ export function activate(context: vscode.ExtensionContext): void {
 	});
 
 	context.subscriptions.push(disposable);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('sampleextension.searchWorld',()=>{
+			SearchWorldPanel.createOrShow(context.extensionUri);
+			vscode.window.showInformationMessage('Hello');
+
+		})
+	);
 
 	//This provides the hover.
 	vscode.languages.registerHoverProvider('python', {

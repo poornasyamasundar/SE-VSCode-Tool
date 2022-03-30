@@ -10,7 +10,8 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:sampleextension.helloWorld"
+		"onCommand:sampleextension.helloWorld",
+		"onCommand:sampleextension.searchWorld"
 	],
 	"main": "./client/out/extension.js",
 	"contributes": {
@@ -26,6 +27,10 @@
 			{
 				"command": "sampleextension.fetch",
 				"title": "Fetch definitions"
+			},
+			{
+				"command": "sampleextension.searchWorld",
+				"title": "Webview"
 			}
 		]
 	},
@@ -48,6 +53,9 @@
 		"@vscode/test-electron": "^2.1.2"
 	},
 	"dependencies": {
+		"concurrently": "^7.0.0",
+		"rollup": "^2.70.1",
+		"svelte": "^3.46.4",
 		"vscode-languageclient": "^7.0.0"
 	}
 }
