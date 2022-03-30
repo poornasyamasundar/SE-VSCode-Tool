@@ -4,14 +4,19 @@ import * as path from "path";
 import { resolve } from "path";
 import { off, setMaxListeners } from "process";
 import * as vscode from 'vscode';
+
 import { ExtensionContext, ExtensionMode, workspace } from "vscode";
 import {
+	InsertReplaceEdit,
+	InsertTextFormat,
     LanguageClient,
     LanguageClientOptions,
     ServerOptions,
 } from "vscode-languageclient/node";
 
 let client: LanguageClient;
+
+
 
 function getClientOptions(): LanguageClientOptions
 {
@@ -70,6 +75,8 @@ let functionDefinitionMap = new Map();
 
 export function activate(context: vscode.ExtensionContext): void {
 
+	//let textEditor = vscode.window.activeTextEditor.selection;
+	//console.log(textEditor);
 	if( context.extensionMode === ExtensionMode.Development ){
 		client = startLanguageServerTCP(2087);
 		console.log("server run manually");
@@ -101,6 +108,22 @@ export function activate(context: vscode.ExtensionContext): void {
 	let disposable = vscode.commands.registerCommand('sampleextension.helloWorld', () => {
 		vscode.window.showInformationMessage('Hello Poorna');
 		getFunctionDefinitions();
+		let textEditor = vscode.window.activeTextEditor;
+		console.log(textEditor);
+		if( textEditor )
+		{
+			let selection = textEditor.selection;
+			let text = textEditor.document.getText(selection);
+			console.log(text);
+
+			//let st = "\"\"\"$ \n \"\"\"$";
+			textEditor.edit(builder => {
+
+				builder.replace(selection, "\"\"\"$\n$\"\"\"\n" + text);
+			});
+		}
+
+		
 
 		let optionsA = ["apple", "almond"];
 		let optionsB = ["Ball", "Bat"];
@@ -266,7 +289,8 @@ async function getDefiniton(document: vscode.TextDocument, position: vscode.Posi
 		if( definition.range.start.line !== 0 )
 		{
 			//get the description from the line above the declaration
-			let description = sourceFile.lineAt(definition.range.start.line-1);
+
+			let description = sourceFile.lineAt(definition.range.start.line-1); //fetchDescription;
 
 			//if it is comment, then it is the definition
 			if( description.text[0] === '#' )
@@ -281,6 +305,55 @@ async function getDefiniton(document: vscode.TextDocument, position: vscode.Posi
 		}		
 	}
 
+}
+
+function fetchDescription(
+	sourceFile: ,
+	definition: 
+){
+	let des = "";
+	let i=1;
+	let endDes = sourceFile.lineAt(definition.range.start.line-i);
+	i++;
+	if(endDes.substr(endDes.length-4, endDes.length) == "$\"\"\""){
+		let temp = sourceFile.lineAt(definition.range.start.line-i);
+		while(temp.substr(0, 4) != "$\"\"\""){
+			des += temp;
+			i++;
+			temp = sourceFile.lineAt(definition.range.start.line-i);
+		}
+		let startDesLine = i;
+
+		return des;
+	}
+	else{
+		return "";
+	}
+
+}
+
+function changeDescription(
+	sourceFile: ,
+	definition: ,
+	description: string
+){
+	let i=1;
+	let endDes = sourceFile.lineAt(definition.range.start.line-i);
+	i++;
+	if(endDes.substr(endDes.length-4, endDes.length) == "$\"\"\""){
+		let temp = sourceFile.lineAt(definition.range.start.line-i);
+		while(temp.substr(0, 4) != "$\"\"\""){
+			i++;
+			temp = sourceFile.lineAt(definition.range.start.line-i);
+		}
+		let startDesLine = i;
+		let r = new vscode.Range(i+1, 0, endDes, 1000);
+		
+		(r, description);
+
+	
+	}
+	
 }
 
 export function deactivate() { }
