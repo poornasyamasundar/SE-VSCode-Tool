@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { getNonce } from "./getNonce";
+import {functionDefinitionMap, globalUri} from './extension';
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
   _view?: vscode.WebviewView;
@@ -26,21 +27,13 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         switch(message.command)
         {
           case 'searchstring':
+          {
             console.log("Search query received from webview: ", message.query);
-            if(message.query==="poorna")
-            {
-              webviewView.webview.postMessage({command:'searchresult',result:[{"funcName": "helloworld()", "location": "there"},{"funcName": "b", "location": "client/media/logo/hw.js"},{"funcName": "c", "location": "there"}]}); 
-            }
-            else if(message.query==="srujan")
-            {
-              webviewView.webview.postMessage({command:'searchresult',result:[{"funcName": "b", "location": "there"},{"funcName": "b", "location": "there"},{"funcName": "c", "location": "there"}]});
-            }
-            else
-            {
-              webviewView.webview.postMessage({command:'searchresult',result:[{"funcName": "c", "location": "there"},{"funcName": "b", "location": "there"},{"funcName": "c", "location": "there"}]});
-            }
+            getResults( message.query, webviewView);
+          }
           case 'navigate':
-            console.log("Received Location: ", message.location)
+            console.log("Received Location: ", message.location);
+            vscode.workspace.openTextDocument(vscode.Uri.file(message.location)).then(document => vscode.window.showTextDocument(document));
         }
       }
     );
@@ -83,3 +76,33 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           </html>`;
         }
       }
+async function getResults(searchQuery: string, webview: vscode.WebviewView)
+{
+    let u = vscode.Uri.joinPath(globalUri, "/poorna");
+			let params:string[] = [];
+			functionDefinitionMap.forEach((value: string, key: string) => 
+			{
+				params.push(key);
+				params.push(value[0]);
+			});
+			console.log(params);
+			let result: string[] = await vscode.commands.executeCommand(
+				'helloPoorna',
+				u.path,
+				params,
+				searchQuery,
+			);
+			console.log("final result + " , result);
+
+      let items = [];
+      for( let i = 0 ; i < result.length ; i++ )
+			{
+				if( i % 2 === 0 )
+				{
+					items.push({"funcName": result[i], "location": functionDefinitionMap.get(result[i])[1], "description": result[i+1]});
+          //webviewView.webview.postMessage({command:'searchresult',result:
+          //[{"funcName": "helloworld()", "location": "there"},{"funcName": "b", "location": "client/media/logo/hw.js"},{"funcName": "c", "location": "there"}]}); 
+				}
+			}
+      webview.webview.postMessage({command:'searchresult',result:items});
+}

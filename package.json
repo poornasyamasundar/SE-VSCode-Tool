@@ -52,6 +52,10 @@
 			{
 				"command": "sampleextension.searchWorld",
 				"title": "Webview"
+			},
+			{
+				"command": "sampleextension.fetchSummary",
+				"title": "Fetch Definitions"
 			}
 		]
 	},

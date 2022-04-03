@@ -72,7 +72,8 @@ function startLangServer(
 }
 
 //This map contains the map between function names and function descriptions of the current file
-let functionDefinitionMap = new Map();
+export let functionDefinitionMap = new Map();
+export let globalUri: vscode.Uri;
 
 export function activate(context: vscode.ExtensionContext): void {
 
@@ -111,11 +112,13 @@ export function activate(context: vscode.ExtensionContext): void {
 	console.log('Congratulations, your extension "sampleextension" is now active!');
 	let disposable0 = vscode.commands.registerCommand('sampleextension.fetch', () => {
 		vscode.window.showInformationMessage('fetch');
-		//test(context);	
+	changeDescription();
 	});
 	context.subscriptions.push(disposable0);
 	let disposable = vscode.commands.registerCommand('sampleextension.helloWorld', () => {
 		vscode.window.showInformationMessage('Hello Poorna');
+		globalUri = context.globalStorageUri;
+		functionDefinitionMap.clear();
 		getFunctionDefinitions();
 		/*
 		let textEditor = vscode.window.activeTextEditor;
@@ -142,7 +145,7 @@ export function activate(context: vscode.ExtensionContext): void {
 			functionDefinitionMap.forEach((value: string, key: string) => 
 			{
 				params.push(key);
-				params.push(value);
+				params.push(value[0]);
 			});
 			console.log(params);
 			let result: string[] = await vscode.commands.executeCommand(
@@ -177,8 +180,11 @@ export function activate(context: vscode.ExtensionContext): void {
 			const word = document.getText(range);							//fetch the word
 			if( functionDefinitionMap.has(word) )							//if the word has a definition, then return it
 			{
+				console.log("word hovered is ", word);
+				console.log("getWord = ", functionDefinitionMap.get(word));
+				console.log("getWord = ", functionDefinitionMap.get(word)[0]);
 				return {
-					contents: [functionDefinitionMap.get(word)],
+					contents: [(functionDefinitionMap.get(word))[0]],
 				};
 			}
 			return {
@@ -187,26 +193,6 @@ export function activate(context: vscode.ExtensionContext): void {
 		}
 	});
 }
-/*
-async function setList(context: ExtensionContext)
-{
-	let u = vscode.Uri.joinPath(context.globalStorageUri, "/poorna");
-	let params:string[] = [];
-	functionDefinitionMap.forEach((value: string, key: string) => 
-	{
-		params.push(key);
-		params.push(value);
-	});
-	console.log(params);
-	let result: string[] = await vscode.commands.executeCommand(
-		'helloPoorna',
-		u.path,
-		params,
-		"links",
-	);
-	quickPick.items = result.map(op => ({label: op}));
-}
-*/
 //This function populates the function definition map
 async function getFunctionDefinitions()
 {
@@ -265,7 +251,7 @@ async function getFunctionDefinitions()
 		//if the definition is not already added and if the token is a function 
 		if( !functionDefinitionMap.has(tokenName) && tokenType === 'function' )
 		{
-			let def = await getDefiniton(document, pos);		//fetch the definition
+			let def = await getDefinition(document, pos);		//fetch the definition
 			functionDefinitionMap.set(tokenName, def);
 		}
 	}
@@ -277,7 +263,7 @@ async function getFunctionDefinitions()
 	}
 }
 
-async function getDefiniton(document: vscode.TextDocument, position: vscode.Position )
+async function getDefinition(document: vscode.TextDocument, position: vscode.Position )
 {
 	//fetch all the definitions
 	const definitions = await vscode.commands.executeCommand<vscode.Location[]>
@@ -296,27 +282,13 @@ async function getDefiniton(document: vscode.TextDocument, position: vscode.Posi
 		{
 			//get the description from the line above the declaration
 
-			// let description = sourceFile.lineAt(definition.range.start.line-1); //fetchDescription;
-
-			
-			// //if it is comment, then it is the definition
-			// if( description.text[0] === '#' )
-			// {
-			// 	return description.text.substring(1);
-			// }
-			// //else it is not the definition
-			// else
-			// {
-			// 	return "No Definition Provided";
-			// }
-
 			let description = fetchDescription(sourceFile, definition);
 			console.log("description = ",description);
 			
 
-			changeDescription(sourceFile, definition, "this description was changed");
+			//changeDescription(definition, "this description was changed");
 
-			return description;
+			return [description, definition.uri.path];
 		}		
 	}
 
@@ -343,44 +315,52 @@ function fetchDescription(
 
 		//let startDesLine = definition.range.start.line + i;
 		console.log("des = ", des);
-		return des;
+		return des.substring(0, des.length -1);
 	}
 	else{
-		return "sgrgehetheh";
+		return "No Definition Provided";
 	}
 
 }
 
-function changeDescription(
-	sourceFile: vscode.TextDocument,
-	definition: vscode.Location,
-	description: string
+async function changeDescription(
 ){
-	let i=1;
-	let endDes = sourceFile.lineAt(definition.range.start.line-i);
-	i++;
-	if(endDes.text === "$\"\"\""){
-		let temp = sourceFile.lineAt(definition.range.start.line-i);
-		while(definition.range.start.line-i >= 0 && temp.text !== "\"\"\"$"){
-			i++;
-			console.log("change line = ", definition.range.start.line-i);
-			temp = sourceFile.lineAt(definition.range.start.line-i);
-		}
-		//let startDesLine = i;
-		//let r = new vscode.Range(definition.range.start.line-i, 0, definition.range.start.line-1, 1000);
-		console.log("textedit, beyotch - ");
-		let textEditor = vscode.window.activeTextEditor;
-		if( textEditor )
-		{
+	let textEditor = vscode.window.activeTextEditor;
+	if (textEditor) {
+		let selection = textEditor.selection;
+		let position = selection.start;
+		let description: string = await vscode.commands.executeCommand(
+			'sampleextension.fetchSummary',
+			textEditor.document.getText(selection),
+		);
+		console.log("Description generated is ", description);
+		let sourceFile: vscode.TextDocument = textEditor.document;
+		let i = 1;
+		let endDes = sourceFile.lineAt(position.line - i);
+		i++;
+		console.log("End des = ", endDes.text);
+		if (endDes.text === "$\"\"\"") {
+			let temp = sourceFile.lineAt(position.line - i);
+			while (position.line - i >= 0 && temp.text !== "\"\"\"$") {
+				i++;
+				console.log("change line = ", position.line - i);
+				temp = sourceFile.lineAt(position.line - i);
+			}
+			//let startDesLine = i;
+			//let r = new vscode.Range(definition.range.start.line-i, 0, definition.range.start.line-1, 1000);
+			console.log("textedit, beyotch - ");
 			textEditor.edit(builder => {
-				
-				builder.replace(new vscode.Range(definition.range.start.line-i+1, 0, definition.range.start.line-2, 1000), description);
+
+				builder.replace(new vscode.Range(position.line - i + 1, 0, position.line - 2, 1000), description[0]);
 			});
 		}
-
-	
+		else {
+			description = "\"\"\"$\n" + description[0] + "\n$\"\"\"\n";
+			textEditor.edit(builder => {
+				builder.replace(new vscode.Range(position.line, 0, position.line, 0), description);
+			});
+		}
 	}
-	
 }
 
 export function deactivate() { }
