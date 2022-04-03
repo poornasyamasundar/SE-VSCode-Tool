@@ -13,7 +13,6 @@ import {
     LanguageClientOptions,
     ServerOptions,
 } from "vscode-languageclient/node";
-import { SearchWorldPanel } from "./SearchWorldPanel";
 import {SidebarProvider} from "./SidebarProvider";
 
 let client: LanguageClient;
@@ -118,6 +117,7 @@ export function activate(context: vscode.ExtensionContext): void {
 	let disposable = vscode.commands.registerCommand('sampleextension.helloWorld', () => {
 		vscode.window.showInformationMessage('Hello Poorna');
 		getFunctionDefinitions();
+		/*
 		let textEditor = vscode.window.activeTextEditor;
 		console.log(textEditor);
 		if( textEditor )
@@ -132,12 +132,8 @@ export function activate(context: vscode.ExtensionContext): void {
 				builder.replace(selection, "\"\"\"$\n$\"\"\"\n" + text);
 			});
 		}
+		*/
 
-		
-
-		let optionsA = ["apple", "almond"];
-		let optionsB = ["Ball", "Bat"];
-		let optionsC = ["cat", "dog"];
 		let quickPick = vscode.window.createQuickPick();
 		quickPick.matchOnDescription = true;
 		quickPick.onDidChangeValue( async (search) => {
@@ -172,14 +168,6 @@ export function activate(context: vscode.ExtensionContext): void {
 	});
 
 	context.subscriptions.push(disposable);
-
-	context.subscriptions.push(
-		vscode.commands.registerCommand('sampleextension.searchWorld',()=>{
-			SearchWorldPanel.createOrShow(context.extensionUri);
-			vscode.window.showInformationMessage('Hello');
-
-		})
-	);
 
 	//This provides the hover.
 	vscode.languages.registerHoverProvider('python', {
@@ -325,20 +313,21 @@ async function getDefiniton(document: vscode.TextDocument, position: vscode.Posi
 
 }
 
+/*
 function fetchDescription(
-	sourceFile: ,
-	definition: 
+	sourceFile: vscode.TextDocument,
+	definition: vscode.Location,
 ){
 	let des = "";
 	let i=1;
-	let endDes = sourceFile.lineAt(definition.range.start.line-i);
+	let endDes = sourceFile.lineAt(definition.range.start.line-i).text;
 	i++;
 	if(endDes.substr(endDes.length-4, endDes.length) == "$\"\"\""){
-		let temp = sourceFile.lineAt(definition.range.start.line-i);
+		let temp = sourceFile.lineAt(definition.range.start.line-i).text;
 		while(temp.substr(0, 4) != "$\"\"\""){
 			des += temp;
 			i++;
-			temp = sourceFile.lineAt(definition.range.start.line-i);
+			temp = sourceFile.lineAt(definition.range.start.line-i).text;
 		}
 		let startDesLine = i;
 
@@ -351,27 +340,24 @@ function fetchDescription(
 }
 
 function changeDescription(
-	sourceFile: ,
-	definition: ,
+	sourceFile: vscode.TextDocument,
+	definition: vscode.Location,
 	description: string
 ){
 	let i=1;
-	let endDes = sourceFile.lineAt(definition.range.start.line-i);
+	let endDes = sourceFile.lineAt(definition.range.start.line-i).text;
 	i++;
 	if(endDes.substr(endDes.length-4, endDes.length) == "$\"\"\""){
-		let temp = sourceFile.lineAt(definition.range.start.line-i);
+		let temp = sourceFile.lineAt(definition.range.start.line-i).text;
 		while(temp.substr(0, 4) != "$\"\"\""){
 			i++;
-			temp = sourceFile.lineAt(definition.range.start.line-i);
+			temp = sourceFile.lineAt(definition.range.start.line-i).text;
 		}
 		let startDesLine = i;
 		let r = new vscode.Range(i+1, 0, endDes, 1000);
-		
 		(r, description);
-
-	
 	}
 	
-}
+}*/
 
 export function deactivate() { }

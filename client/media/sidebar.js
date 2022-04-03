@@ -1,26 +1,24 @@
-const { VersionedTextDocumentIdentifier } = require("vscode-languageclient");
-
+//const { VersionedTextDocumentIdentifier } = require("vscode-languageclient");
+//import { VersionedTextDocumentIdentifier } from "vscode-languageclient";
 (function () {
-
-    
+    const vscode = acquireVsCodeApi();
     let inputField = document.getElementById("inputfield");
+
     inputField.addEventListener("input", (event) => {
         let searchString = event.target.value;
+        console.log("Search query before sending to extension: ",searchString);
         vscode.postMessage({command:"searchstring",query:searchString});        
-        console.log(searchString);
     });
     window.addEventListener('message',event=>{
-        console.log(message);
         const message=event.data;
-        switch(message.command)
-        {
-            case("searchresult"):
-                arr=message.result;
+        switch(message.command) 
+        {   
+            case "searchresult":
+                let arr=message.result;
+                console.log("Search results received from extension", arr);
                 populateChildren(arr);
-                
         }
     });
-    // populateChildren(arr);
 
     const populateChildren = (arr) => {
         let elem=document.getElementById("searchlist");

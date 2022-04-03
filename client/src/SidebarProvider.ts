@@ -18,14 +18,16 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     };
 
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+    webviewView.webview.postMessage({command:'searchresult',result:["d","b","c"]});
+
     webviewView.webview.onDidReceiveMessage(
+
       message=>
       {
-        console.log(message);
         switch(message.command)
         {
           case 'searchstring':
-            console.log(message.query);
+            console.log("Search query received from webview: ", message.query);
             if(message.query==="poorna")
             {
               webviewView.webview.postMessage({command:'searchresult',result:["a","b","c"]}); 
@@ -41,30 +43,6 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         }
       }
     );
-
-    webviewView.webview.onDidReceiveMessage(async (data) => {
-      switch (data.type) {
-        case "onInfo": {
-          if (!data.value) {
-            return;
-          }
-          vscode.window.showInformationMessage(data.value);
-          break;
-        }
-        case "onError": {
-          if (!data.value) {
-            return;
-          }
-          vscode.window.showErrorMessage(data.value);
-          break;
-        }
-        // case "tokens": {
-        //   await Util.globalState.update(accessTokenKey, data.accessToken);
-        //   await Util.globalState.update(refreshTokenKey, data.refreshToken);
-        //   break;
-        // }
-      }
-    });
   }
 
   public revive(panel: vscode.WebviewView) {
@@ -78,9 +56,6 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this._extensionUri,"client", "media", "sidebar.js")
     );
-    // const styleMainUri = webview.asWebviewUri(
-    //   vscode.Uri.joinPath(this._extensionUri, "out", "compiled/sidebar.css")
-    // );
     const styleVSCodeUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this._extensionUri,"client", "media", "vscode.css")
     );
@@ -102,11 +77,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           <input id="inputfield"></input>
           <ul id="searchlist">
           </ul> 
-          <script nonce="${nonce}" src="${scriptUri}"></script>
+          <script type = "module" nonce="${nonce}" src="${scriptUri}"></script>
           </body>
           </html>`;
         }
       }
-      // <link href="" rel="stylesheet">
-      // <iframe src="https://youtu.be/0FeJpMteQY4" width="100%" height="400px">
-      // </iframe>      

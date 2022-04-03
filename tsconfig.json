@@ -15,5 +15,5 @@
 		// "noUnusedParameters": true,  /* Report errors on unused parameters. */
 	},
 	"include": ["client/src"],
-	"exclude": ["node_modules","client/webviews","client/pages"]
+	"exclude": ["node_modules","client/pages"]
 }
