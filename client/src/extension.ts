@@ -296,45 +296,57 @@ async function getDefiniton(document: vscode.TextDocument, position: vscode.Posi
 		{
 			//get the description from the line above the declaration
 
-			let description = sourceFile.lineAt(definition.range.start.line-1); //fetchDescription;
+			// let description = sourceFile.lineAt(definition.range.start.line-1); //fetchDescription;
 
-			//if it is comment, then it is the definition
-			if( description.text[0] === '#' )
-			{
-				return description.text.substring(1);
-			}
-			//else it is not the definition
-			else
-			{
-				return "No Definition Provided";
-			}
+			
+			// //if it is comment, then it is the definition
+			// if( description.text[0] === '#' )
+			// {
+			// 	return description.text.substring(1);
+			// }
+			// //else it is not the definition
+			// else
+			// {
+			// 	return "No Definition Provided";
+			// }
+
+			let description = fetchDescription(sourceFile, definition);
+			console.log("description = ",description);
+			
+
+			changeDescription(sourceFile, definition, "this description was changed");
+
+			return description;
 		}		
 	}
 
 }
 
-/*
 function fetchDescription(
 	sourceFile: vscode.TextDocument,
-	definition: vscode.Location,
+	definition: vscode.Location
 ){
 	let des = "";
+	let listDes = [];
 	let i=1;
-	let endDes = sourceFile.lineAt(definition.range.start.line-i).text;
+	let endDes = sourceFile.lineAt(definition.range.start.line-i);
 	i++;
-	if(endDes.substr(endDes.length-4, endDes.length) == "$\"\"\""){
-		let temp = sourceFile.lineAt(definition.range.start.line-i).text;
-		while(temp.substr(0, 4) != "$\"\"\""){
-			des += temp;
+	console.log("endDes = ", endDes.text);//[endDes.text.length-4, endDes.text.length]);
+	if(endDes.text === "$\"\"\""){
+		let temp = sourceFile.lineAt(definition.range.start.line-i);
+		while(temp.text !== "\"\"\"$"){
 			i++;
-			temp = sourceFile.lineAt(definition.range.start.line-i).text;
+			des = temp.text + "\n" + des;
+			console.log("line numbers; ", definition.range.start.line-i);
+			temp = sourceFile.lineAt(definition.range.start.line-i);
 		}
-		let startDesLine = i;
 
+		//let startDesLine = definition.range.start.line + i;
+		console.log("des = ", des);
 		return des;
 	}
 	else{
-		return "";
+		return "sgrgehetheh";
 	}
 
 }
@@ -345,19 +357,30 @@ function changeDescription(
 	description: string
 ){
 	let i=1;
-	let endDes = sourceFile.lineAt(definition.range.start.line-i).text;
+	let endDes = sourceFile.lineAt(definition.range.start.line-i);
 	i++;
-	if(endDes.substr(endDes.length-4, endDes.length) == "$\"\"\""){
-		let temp = sourceFile.lineAt(definition.range.start.line-i).text;
-		while(temp.substr(0, 4) != "$\"\"\""){
+	if(endDes.text === "$\"\"\""){
+		let temp = sourceFile.lineAt(definition.range.start.line-i);
+		while(definition.range.start.line-i >= 0 && temp.text !== "\"\"\"$"){
 			i++;
-			temp = sourceFile.lineAt(definition.range.start.line-i).text;
+			console.log("change line = ", definition.range.start.line-i);
+			temp = sourceFile.lineAt(definition.range.start.line-i);
 		}
-		let startDesLine = i;
-		let r = new vscode.Range(i+1, 0, endDes, 1000);
-		(r, description);
+		//let startDesLine = i;
+		//let r = new vscode.Range(definition.range.start.line-i, 0, definition.range.start.line-1, 1000);
+		console.log("textedit, beyotch - ");
+		let textEditor = vscode.window.activeTextEditor;
+		if( textEditor )
+		{
+			textEditor.edit(builder => {
+				
+				builder.replace(new vscode.Range(definition.range.start.line-i+1, 0, definition.range.start.line-2, 1000), description);
+			});
+		}
+
+	
 	}
 	
-}*/
+}
 
 export function deactivate() { }
