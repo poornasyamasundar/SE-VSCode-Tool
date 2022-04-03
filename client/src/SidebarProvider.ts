@@ -21,7 +21,6 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     webviewView.webview.postMessage({command:'searchresult',result:["d","b","c"]});
 
     webviewView.webview.onDidReceiveMessage(
-
       message=>
       {
         switch(message.command)
@@ -30,16 +29,18 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             console.log("Search query received from webview: ", message.query);
             if(message.query==="poorna")
             {
-              webviewView.webview.postMessage({command:'searchresult',result:["a","b","c"]}); 
+              webviewView.webview.postMessage({command:'searchresult',result:[{"funcName": "helloworld()", "location": "there"},{"funcName": "b", "location": "client/media/logo/hw.js"},{"funcName": "c", "location": "there"}]}); 
             }
             else if(message.query==="srujan")
             {
-              webviewView.webview.postMessage({command:'searchresult',result:["d","b","c"]});
+              webviewView.webview.postMessage({command:'searchresult',result:[{"funcName": "b", "location": "there"},{"funcName": "b", "location": "there"},{"funcName": "c", "location": "there"}]});
             }
             else
             {
-              webviewView.webview.postMessage({command:'searchresult',result:["z"]});
+              webviewView.webview.postMessage({command:'searchresult',result:[{"funcName": "c", "location": "there"},{"funcName": "b", "location": "there"},{"funcName": "c", "location": "there"}]});
             }
+          case 'navigate':
+            console.log("Received Location: ", message.location)
         }
       }
     );
@@ -75,8 +76,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         <body>
           <h1>Sample Extension</h1>
           <input id="inputfield"></input>
-          <ul id="searchlist">
-          </ul> 
+          <div id="searchlist">
+          </div> 
           <script type = "module" nonce="${nonce}" src="${scriptUri}"></script>
           </body>
           </html>`;
