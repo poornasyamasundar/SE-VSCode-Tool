@@ -14,7 +14,7 @@ Used the Roberta Model for generating Code Summaries.
 ```
 -   ### Whoosh
 ```
-For text Based Searching.
+For Indexing and Searching Text.
 ```
 
 
