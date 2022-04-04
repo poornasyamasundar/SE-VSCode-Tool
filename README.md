@@ -37,7 +37,9 @@ For text Based Searching.
 -   [Link to the Model](https://code-summary.s3.amazonaws.com/pytorch_model.bin)
 
 # How To Use
-_The Extension runs in the developer mode for now._
+> NOTE:
+>
+>_The Extension runs in the developer mode for now._
 
 * Press **f5** to open a new VSCode window in debug mode.
 * Press **Ctrl + Shift + p** to open the command palette and execute the **ACS-python: Start** Command, to start the extension.
