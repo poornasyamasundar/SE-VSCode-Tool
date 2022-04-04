@@ -1,14 +1,14 @@
+from urllib.request import pathname2url
 from pygls.server import LanguageServer
 from whoosh.fields import Schema, TEXT
 from whoosh import index
-import os, os.path
+import os
+import os.path
 from whoosh import qparser, query, highlight
 from whoosh.analysis import StemmingAnalyzer
 
 import os
 import json
-import torch
-import torch.nn as nn
 from transformers import RobertaConfig, RobertaModel, RobertaTokenizer
 from torch.utils.data import TensorDataset, DataLoader, SequentialSampler
 
@@ -47,7 +47,8 @@ class Seq2Seq(nn.Module):
         self.config = config
         self.register_buffer("bias", torch.tril(torch.ones(2048, 2048)))
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        self.lm_head = nn.Linear(
+            config.hidden_size, config.vocab_size, bias=False)
         self.lsm = nn.LogSoftmax(dim=-1)
         self.tie_weights()
 
@@ -86,7 +87,8 @@ class Seq2Seq(nn.Module):
                 1 - self.bias[: target_ids.shape[1], : target_ids.shape[1]]
             )
             tgt_embeddings = (
-                self.encoder.embeddings(target_ids).permute([1, 0, 2]).contiguous()
+                self.encoder.embeddings(target_ids).permute(
+                    [1, 0, 2]).contiguous()
             )
             out = self.decoder(
                 tgt_embeddings,
@@ -94,7 +96,8 @@ class Seq2Seq(nn.Module):
                 tgt_mask=attn_mask,
                 memory_key_padding_mask=(1 - source_mask).bool(),
             )
-            hidden_states = torch.tanh(self.dense(out)).permute([1, 0, 2]).contiguous()
+            hidden_states = torch.tanh(self.dense(
+                out)).permute([1, 0, 2]).contiguous()
             lm_logits = self.lm_head(hidden_states)
             # Shift so that tokens < n predict n
             active_loss = target_mask[..., 1:].ne(0).view(-1) == 1
@@ -117,8 +120,8 @@ class Seq2Seq(nn.Module):
             elif source_ids.device.type == "cpu":
                 zero = torch.LongTensor(1).fill_(0)
             for i in range(source_ids.shape[0]):
-                context = encoder_output[:, i : i + 1]
-                context_mask = source_mask[i : i + 1, :]
+                context = encoder_output[:, i: i + 1]
+                context_mask = source_mask[i: i + 1, :]
                 beam = Beam(
                     self.beam_size,
                     self.sos_id,
@@ -132,7 +135,8 @@ class Seq2Seq(nn.Module):
                     if beam.done():
                         break
                     attn_mask = -1e4 * (
-                        1 - self.bias[: input_ids.shape[1], : input_ids.shape[1]]
+                        1 - self.bias[: input_ids.shape[1],
+                                      : input_ids.shape[1]]
                     )
                     tgt_embeddings = (
                         self.encoder.embeddings(input_ids)
@@ -146,18 +150,21 @@ class Seq2Seq(nn.Module):
                         memory_key_padding_mask=(1 - context_mask).bool(),
                     )
                     out = torch.tanh(self.dense(out))
-                    hidden_states = out.permute([1, 0, 2]).contiguous()[:, -1, :]
+                    hidden_states = out.permute(
+                        [1, 0, 2]).contiguous()[:, -1, :]
                     out = self.lsm(self.lm_head(hidden_states)).data
                     beam.advance(out)
                     input_ids.data.copy_(
                         input_ids.data.index_select(0, beam.getCurrentOrigin())
                     )
-                    input_ids = torch.cat((input_ids, beam.getCurrentState()), -1)
+                    input_ids = torch.cat(
+                        (input_ids, beam.getCurrentState()), -1)
                 hyp = beam.getHyp(beam.getFinal())
                 pred = beam.buildTargetTokens(hyp)[: self.beam_size]
                 pred = [
                     torch.cat(
-                        [x.view(-1) for x in p] + [zero] * (self.max_length - len(p))
+                        [x.view(-1) for x in p] + [zero] *
+                        (self.max_length - len(p))
                     ).view(1, -1)
                     for p in pred
                 ]
@@ -331,7 +338,8 @@ def convert_examples_to_features(examples, tokenizer, stage=None):
     for example_index, example in enumerate(examples):
         # source
         source_tokens = tokenizer.tokenize(example.source)[: 256 - 2]
-        source_tokens = [tokenizer.cls_token] + source_tokens + [tokenizer.sep_token]
+        source_tokens = [tokenizer.cls_token] + \
+            source_tokens + [tokenizer.sep_token]
         source_ids = tokenizer.convert_tokens_to_ids(source_tokens)
         source_mask = [1] * (len(source_tokens))
         padding_length = 256 - len(source_ids)
@@ -345,7 +353,8 @@ def convert_examples_to_features(examples, tokenizer, stage=None):
             target_tokens = tokenizer.tokenize(example.target)[
                 : 128 - 2
             ]
-        target_tokens = [tokenizer.cls_token] + target_tokens + [tokenizer.sep_token]
+        target_tokens = [tokenizer.cls_token] + \
+            target_tokens + [tokenizer.sep_token]
         target_ids = tokenizer.convert_tokens_to_ids(target_tokens)
         target_mask = [1] * len(target_ids)
         padding_length = 128 - len(target_ids)
@@ -364,12 +373,12 @@ def convert_examples_to_features(examples, tokenizer, stage=None):
     return features
 
 
-
-## We are defining all the needed functions here.
+# We are defining all the needed functions here.
 def inference(data, model, tokenizer):
     # Calculate bleu
     eval_sampler = SequentialSampler(data)
-    eval_dataloader = DataLoader(data, sampler=eval_sampler, batch_size=len(data))
+    eval_dataloader = DataLoader(
+        data, sampler=eval_sampler, batch_size=len(data))
 
     model.eval()
     p = []
@@ -417,7 +426,7 @@ def build_model(model_class, config, tokenizer):
         eos_id=tokenizer.sep_token_id,
     )
 
-    print("current files",os.listdir())
+    print("current files", os.listdir())
     model.load_state_dict(
         torch.load(
             "server/pytorch_model.bin",
@@ -427,9 +436,10 @@ def build_model(model_class, config, tokenizer):
     )
     return model
 
+
 class PythonLanguageServer(LanguageServer):
-    HELLO_WORLD = 'helloPoorna'
-    FETCH_SUMMARY = 'sampleextension.fetchSummary'
+    GET_SEARCH_RESULTS = 'ACS-python.getSearchResults'
+    FETCH_SUMMARY = 'ACS-python.fetchSummary'
 
     def __init__(self):
         super().__init__()
@@ -437,70 +447,64 @@ class PythonLanguageServer(LanguageServer):
 
 server = PythonLanguageServer()
 
-@server.command(PythonLanguageServer.HELLO_WORLD)
-def helloWorld(ls:PythonLanguageServer, *args):
-    #print(args) 
-    #print(args[0][0])
-    #path = args[0][0]
-    print(args)
+
+@server.command(PythonLanguageServer.GET_SEARCH_RESULTS)
+def getSummary(ls: PythonLanguageServer, *args):
     definitions = args[0][1]
-    print(definitions)
-    print(args[0][0])
-    print(args[0][2])
-    #checking(path)
     results = getResults(args[0][0], definitions, args[0][2])
-    print(results)
-    ls.show_message("hello this is poorna")
     return results
 
+
 @server.command(PythonLanguageServer.FETCH_SUMMARY)
-def fetchSummary(ls:PythonLanguageServer, *args):
+def fetchSummary(ls: PythonLanguageServer, *args):
     config = RobertaConfig.from_pretrained("microsoft/codebert-base")
-    tokenizer = RobertaTokenizer.from_pretrained( "microsoft/codebert-base", do_lower_case=False)
-    model = build_model( model_class = RobertaModel, config = config, tokenizer = tokenizer).to('cpu')
+    tokenizer = RobertaTokenizer.from_pretrained(
+        "microsoft/codebert-base", do_lower_case=False)
+    model = build_model(model_class=RobertaModel,
+                        config=config, tokenizer=tokenizer).to('cpu')
 
-    print("arguements for fetch summary are", args)
-    print("args[0]", args[0])
+    print("ARGS = ", args)
+    print("code got for generating summary is ", args[0][0])
+    print("args[0] ", args[0])
     example = [Example(source=args[0][0], target=None)]
-    summary, length = inference(get_features(example, tokenizer), model, tokenizer)
-
-    print("Summary generated is ", summary)
+    summary, length = inference(get_features(
+        example, tokenizer), model, tokenizer)
+    print("Summary generated is:", summary)
     return summary
 
-def getResults(path, definitions, searchQuery):
-    print("Entered checking")
-    stem_ana = StemmingAnalyzer()
-    schema = Schema(title=TEXT(analyzer=stem_ana, stored=True), content=TEXT(analyzer = stem_ana, stored=True))
 
-    if not os.path.exists(path):
-        os.mkdir(path)
-    
-    ix = index.create_in(path, schema)
+def getResults(pathname, definitions, searchQuery):
+    stem_ana = StemmingAnalyzer()
+    schema = Schema(title=TEXT(analyzer=stem_ana, stored=True),
+                    content=TEXT(analyzer=stem_ana, stored=True))
+
+    print("Path name is ", pathname)
+    if not os.path.exists(pathname):
+        os.mkdir(pathname)
+
+    ix = index.create_in(pathname, schema)
     writer = ix.writer()
 
     for i in range(len(definitions)):
-        if( i % 2 == 0 ):
+        if(i % 2 == 0):
             writer.add_document(title=definitions[i], content=definitions[i+1])
 
     writer.commit()
-    print("doc count = ", ix.doc_count())
-    qp = qparser.MultifieldParser(["content", "title"], schema=schema, termclass=query.Variations, group = qparser.OrGroup)
-    print(searchQuery)
+    qp = qparser.MultifieldParser(
+        ["content", "title"], schema=schema, termclass=query.Variations, group=qparser.OrGroup)
     q = qp.parse(searchQuery)
 
-    result = []    
+    result = []
     with ix.searcher() as s:
         results = s.search(q, terms=True, limit=10)
-        print("searc results:")
-        print(results[0:10])
         results.formatter = highlight.UppercaseFormatter()
         results.fragmenter.maxchars = 30
         results.fragmenter.surround = 30
         for i in range(len(results)):
-            if( i == 4 ):
+            if(i == 4):
                 break
             result.append(results[i]["title"])
-            if( results[i].highlights("content") != ''):
+            if(results[i].highlights("content") != ''):
                 result.append(results[i].highlights("content"))
             else:
                 result.append(results[i]["content"])

@@ -1,6 +1,6 @@
 {
-	"name": "sampleextension",
-	"displayName": "sampleExtension",
+	"name": "acspython",
+	"displayName": "ACS-python",
 	"description": "",
 	"version": "0.0.1",
 	"engines": {
@@ -10,52 +10,53 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onView:sampleextension-sidebar",
-		"onCommand:sampleextension.helloWorld",
-		"onCommand:sampleextension.searchWorld"
+		"onView:ACS-python-sidebar",
+		"onCommand:ACS-python.start"
 	],
 	"main": "./client/out/extension.js",
 	"contributes": {
 		"viewsContainers": {
 			"activitybar": [
 				{
-					"id": "sampleextension-sidebar-view",
-					"title": "sampleextension",
+					"id": "ACS-python-sidebar-view",
+					"title": "ACS-python",
 					"icon": "client/media/logo.svg"
 				}
 			]
 		},
 		"views": {
-			"sampleextension-sidebar-view": [
+			"ACS-python-sidebar-view": [
 				{
 					"type": "webview",
-					"id": "sampleextension-sidebar",
-					"name": "sampleextension",
+					"id": "ACS-python-sidebar",
+					"name": "ACS-python",
 					"icon": "client/media/logo.svg",
-					"contextualTitle": "sampleextension"
+					"contextualTitle": "ACS-python"
 				}
 			]
 		},
 		"commands": [
 			{
-				"command": "sampleextension.helloWorld",
-				"title": "Hello World"
+				"command": "ACS-python.start",
+				"title": "ACS-python: Start"
 			},
 			{
-				"command": "helloPoorna",
-				"title": "Say hello to poorna"
+				"command": "ACS-python.getSearchResults",
+				"title": "z;lfahogs",
+				"when": false
 			},
 			{
-				"command": "sampleextension.fetch",
-				"title": "Fetch definitions"
+				"command": "ACS-python.fetch",
+				"title": "ACS-python: Fetch Definitions"
 			},
 			{
-				"command": "sampleextension.searchWorld",
-				"title": "Webview"
+				"command": "ACS-python.fetchSummary",
+				"title": "aouhtft98ythyutr8",
+				"when": false
 			},
 			{
-				"command": "sampleextension.fetchSummary",
-				"title": "Fetch Definitions"
+				"command": "ACS-python.getSummary",
+				"title": "ACS-python: Get Summary"
 			}
 		]
 	},

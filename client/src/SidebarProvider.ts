@@ -19,8 +19,6 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     };
 
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-    webviewView.webview.postMessage({command:'searchresult',result:["d","b","c"]});
-
     webviewView.webview.onDidReceiveMessage(
       message=>
       {
@@ -67,7 +65,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             <link href="${styleVSCodeUri}" rel="stylesheet">
         </head>
         <body>
-          <h1>Sample Extension</h1>
+          <h3>Search for Description</h3>
           <input id="inputfield"></input>
           <div id="searchlist">
           </div> 
@@ -78,7 +76,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       }
 async function getResults(searchQuery: string, webview: vscode.WebviewView)
 {
-    let u = vscode.Uri.joinPath(globalUri, "/poorna");
+    let u = vscode.Uri.joinPath(globalUri);
 			let params:string[] = [];
 			functionDefinitionMap.forEach((value: string, key: string) => 
 			{
@@ -87,12 +85,12 @@ async function getResults(searchQuery: string, webview: vscode.WebviewView)
 			});
 			console.log(params);
 			let result: string[] = await vscode.commands.executeCommand(
-				'helloPoorna',
+				'ACS-python.getSearchResults',
 				u.path,
 				params,
 				searchQuery,
 			);
-			console.log("final result + " , result);
+
 
       let items = [];
       for( let i = 0 ; i < result.length ; i++ )
@@ -100,8 +98,6 @@ async function getResults(searchQuery: string, webview: vscode.WebviewView)
 				if( i % 2 === 0 )
 				{
 					items.push({"funcName": result[i], "location": functionDefinitionMap.get(result[i])[1], "description": result[i+1]});
-          //webviewView.webview.postMessage({command:'searchresult',result:
-          //[{"funcName": "helloworld()", "location": "there"},{"funcName": "b", "location": "client/media/logo/hw.js"},{"funcName": "c", "location": "there"}]}); 
 				}
 			}
       webview.webview.postMessage({command:'searchresult',result:items});
