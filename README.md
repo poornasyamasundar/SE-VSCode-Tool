@@ -8,12 +8,10 @@ _A VScode Extension for Code Summarization._
 ```
 Python Implementation of Microsoft Language Server Protocol
 ```
-
 -   ### CodeBERT
 ```
 Used the Roberta Model for generating Code Summaries.
 ```
-
 -   ### Whoosh
 ```
 For text Based Searching.
