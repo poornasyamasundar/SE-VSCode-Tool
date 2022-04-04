@@ -5,19 +5,16 @@ _A VScode Extension for Code Summarization._
 # Technologies/Libraries Used
 
 -   ### Pygls
-
 ```
 Python Implementation of Microsoft Language Server Protocol
 ```
 
 -   ### CodeBERT
-
 ```
 Used the Roberta Model for generating Code Summaries.
 ```
 
 -   ### Whoosh
-
 ```
 For text Based Searching.
 ```
