@@ -3,6 +3,10 @@ import * as net from "net";
 import * as path from "path";
 import * as vscode from 'vscode';
 
+let currentLine = -1;
+let lastChange = -1;
+let descriptionWriting = false;
+
 import { ExtensionMode, workspace } from "vscode";
 import {
     LanguageClient,
@@ -114,11 +118,85 @@ export function activate(context: vscode.ExtensionContext): void {
 	});
 
 	let disposable1 = vscode.commands.registerCommand('ACS-python.getSummary', async () => {
-		await changeDescription();
+		await generateDescription();
 	});
 
 	context.subscriptions.push(disposable);
 	context.subscriptions.push(disposable1);
+
+	vscode.workspace.onDidChangeTextDocument(async function (event) 
+	{
+		if( descriptionWriting )
+		{
+			return;
+		}	
+
+		if( event.contentChanges.length !== 0 )
+		{
+			let startLine = event.contentChanges[0].range.start.line;
+			let sourceFile: vscode.TextDocument = event.document;
+			let line = '';
+			try {
+				line = sourceFile.lineAt(startLine).text;
+			}
+			catch (e) {
+			}
+			var splitted = line.split(" ", 3);
+			if( splitted.length !== 0 )
+			{
+				if( splitted[0] === "def" )
+				{
+					insertDescriptionBox(startLine);
+				}
+			}
+			
+			if (currentLine === -1) {
+				currentLine = startLine;
+				lastChange = startLine;
+			}
+			else 
+			{
+				if (startLine === lastChange || startLine === lastChange + 1) {
+					if (currentLine + 4 <= startLine) {
+						let content = '';
+						let sourceFile: vscode.TextDocument = event.document;
+						for (let i = currentLine; i < startLine; i++) {
+							try {
+								let endDes = sourceFile.lineAt(i);
+								content += endDes.text + '\n';
+							}
+							catch (e) {
+							}
+						}
+
+						console.log(content);
+						getFunctionBody(startLine);
+						//await dummyGenerator(sourceFile, startPosition, content);
+						currentLine = startLine;
+					}
+					lastChange = startLine;
+				}
+				else {
+					let content = '';
+					let sourceFile: vscode.TextDocument = event.document;
+					for (let i = currentLine; i <= lastChange; i++) {
+						try {
+							let endDes = sourceFile.lineAt(i);
+							content += endDes.text + '\n';
+						}
+						catch (e) {
+						}
+					}
+
+					console.log(content);
+					currentLine = startLine;
+					getFunctionBody(startLine);
+					lastChange = startLine;
+				}
+			}
+		}
+	});
+		
 
 	//This provides the hover.
 	vscode.languages.registerHoverProvider('python', {
@@ -202,6 +280,169 @@ async function getFunctionDefinitions()
 		}
 	}
 }
+function insertDescriptionBox(lineNumber: number)
+{
+	let textEditor = vscode.window.activeTextEditor;
+	if( textEditor )
+	{
+		let sourceFile = textEditor.document;
+		if( lineNumber !== 0 )
+		{
+			let endDes = sourceFile.lineAt(lineNumber-1);
+			if (endDes.text === "$\"\"\"") 
+			{
+				return;
+			}
+		}
+		let position = new vscode.Position(lineNumber, 0);
+		let content = "\"\"\"$\nFunction Description Goes here\n$\"\"\"\n";
+		
+		textEditor.edit(builder => {
+			builder.replace(new vscode.Range(position.line, 0, position.line, 0), content);
+		});
+	}
+}
+
+async function getFunctionBody(lineNumber: number)
+{
+	let functionStartLine = -1;
+	let functionEndLine = -1;
+
+	let textEditor = vscode.window.activeTextEditor;
+	if( textEditor )
+	{
+		let sourceFile = textEditor.document;
+		let ln = lineNumber;
+		while( ln !== 0 )
+		{
+			let line = '';
+			try{
+			line = sourceFile.lineAt(ln).text;
+			}
+			catch(e)
+			{}
+			var splitted = line.split(" ", 3);
+			if( splitted.length !== 0 )
+			{
+				if( splitted[0] === "def" )
+				{
+					functionStartLine = ln;
+					break;
+				}
+			}
+			ln -= 1;
+		}
+		console.log("Function start line is", functionStartLine);
+		try{
+			console.log(sourceFile.lineAt(functionStartLine).text);
+		}
+		catch(e)
+		{
+			return;
+		}
+
+		ln = lineNumber;
+		while( true )
+		{
+			let line = '';
+			try{
+				line = sourceFile.lineAt(ln).text;
+			}
+			catch(e)
+			{
+				break;
+			}
+			if( line !== '' && line.substring(0, 4) !== "    " )
+			{
+				functionEndLine = ln-1;
+				break;
+			}
+			ln++;
+		}
+		if( functionEndLine === -1 )
+		{
+			functionEndLine = ln-1;
+		}
+
+		console.log("functionEndLIne", functionEndLine);
+		try{
+			console.log(sourceFile.lineAt(functionEndLine).text);
+		}
+		catch(e)
+		{
+			return;
+		}
+		
+		if( functionStartLine === -1 || functionEndLine === -1 )
+		{
+			return;
+		}
+
+		let body = '';
+		for( let i = functionStartLine; i <= functionEndLine ; i++ )
+		{
+			try{
+				body += sourceFile.lineAt(i).text + "\n";
+			}
+			catch(e)
+			{
+				return;
+			}
+		}
+
+		let startPosition = new vscode.Position(functionStartLine, 0);
+		if( body !== '' )
+		{
+			changeDescription(textEditor.document, startPosition, body);
+		}
+	}
+}
+
+async function changeDescription(sourceFile: vscode.TextDocument, position: vscode.Position, body: string) 
+{
+	let textEditor = vscode.window.activeTextEditor;
+
+	if (textEditor) 
+	{
+		//let description = content;
+		let description: string = await vscode.commands.executeCommand(
+			'ACS-python.fetchSummary',
+			body,
+		);
+		let i = 1;
+		let endDes = sourceFile.lineAt(position.line - i);
+
+		i++;
+		if (endDes.text === "$\"\"\"") 
+		{
+			let temp = sourceFile.lineAt(position.line - i);
+			while (position.line - i >= 0 && temp.text !== "\"\"\"$") 
+			{
+				i++;
+				temp = sourceFile.lineAt(position.line - i);
+			}
+
+			descriptionWriting = true;
+			await textEditor.edit(builder => {
+
+				builder.replace(new vscode.Range(position.line - i + 1, 0, position.line - 2, 1000), description);
+			});
+			descriptionWriting = false;
+
+		}
+		else 
+		{
+			description = "\"\"\"$\n" + description + "\n$\"\"\"\n";
+
+			descriptionWriting = true;
+			await textEditor.edit(builder => {
+				builder.replace(new vscode.Range(position.line, 0, position.line, 0), description);
+			});
+			descriptionWriting = false;
+
+		}
+	}
+}
 
 async function getDefinition(document: vscode.TextDocument, position: vscode.Position )
 {
@@ -254,7 +495,7 @@ function fetchDescription(
 
 }
 
-async function changeDescription(
+async function generateDescription(
 ){
 	let textEditor = vscode.window.activeTextEditor;
 	if (textEditor) {
@@ -278,11 +519,11 @@ async function changeDescription(
 			}
 			textEditor.edit(builder => {
 
-				builder.replace(new vscode.Range(position.line - i + 1, 0, position.line - 2, 1000), description[0]);
+				builder.replace(new vscode.Range(position.line - i + 1, 0, position.line - 2, 1000), description);
 			});
 		}
 		else {
-			description = "\"\"\"$\n" + description[0] + "\n$\"\"\"\n";
+			description = "\"\"\"$\n" + description + "\n$\"\"\"\n";
 			textEditor.edit(builder => {
 				builder.replace(new vscode.Range(position.line, 0, position.line, 0), description);
 			});

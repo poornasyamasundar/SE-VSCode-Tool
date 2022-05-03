@@ -6,6 +6,7 @@ import os
 import os.path
 from whoosh import qparser, query, highlight
 from whoosh.analysis import StemmingAnalyzer
+import requests
 
 import os
 import json
@@ -16,8 +17,8 @@ import torch
 import torch.nn as nn
 
 
+"""
 class Seq2Seq(nn.Module):
-    """
     Build Seqence-to-Sequence.
 
     Parameters:
@@ -29,7 +30,6 @@ class Seq2Seq(nn.Module):
     * `max_length`- max length of target for beam search.
     * `sos_id`- start of symbol ids in target for beam search.
     * `eos_id`- end of symbol ids in target for beam search.
-    """
 
     def __init__(
         self,
@@ -58,16 +58,15 @@ class Seq2Seq(nn.Module):
         self.eos_id = eos_id
 
     def _tie_or_clone_weights(self, first_module, second_module):
-        """Tie or clone module weights depending of weither we are using TorchScript or not"""
+        Tie or clone module weights depending of weither we are using TorchScript or not
         if self.config.torchscript:
             first_module.weight = nn.Parameter(second_module.weight.clone())
         else:
             first_module.weight = second_module.weight
 
     def tie_weights(self):
-        """Make sure we are sharing the input and output embeddings.
+        Make sure we are sharing the input and output embeddings.
         Export to TorchScript can't handle parameter sharing so we are cloning them instead.
-        """
         self._tie_or_clone_weights(
             self.lm_head, self.encoder.embeddings.word_embeddings
         )
@@ -204,7 +203,6 @@ class Beam(object):
         return self.prevKs[-1]
 
     def advance(self, wordLk):
-        """
         Given prob over words for every last beam `wordLk` and attention
         `attnOut`: Compute and update the beam search.
 
@@ -214,7 +212,6 @@ class Beam(object):
         * `attnOut`- attention at the last step
 
         Returns: True if beam search is complete.
-        """
         numWords = wordLk.size(1)
 
         # Sum the previous scores.
@@ -265,9 +262,7 @@ class Beam(object):
         return self.finished[: self.size]
 
     def getHyp(self, beam_res):
-        """
         Walk back to construct the full hypothesis.
-        """
         hyps = []
         for _, timestep, k in beam_res:
             hyp = []
@@ -304,7 +299,6 @@ class Beam(object):
 
 
 class Example(object):
-    """A single training/test example."""
 
     def __init__(
         self,
@@ -316,7 +310,6 @@ class Example(object):
 
 
 class InputFeatures(object):
-    """A single training/test features for a example."""
 
     def __init__(
         self,
@@ -435,6 +428,7 @@ def build_model(model_class, config, tokenizer):
         strict=False,
     )
     return model
+"""
 
 
 class PythonLanguageServer(LanguageServer):
@@ -449,14 +443,15 @@ server = PythonLanguageServer()
 
 
 @server.command(PythonLanguageServer.GET_SEARCH_RESULTS)
-def getSummary(ls: PythonLanguageServer, *args):
+def getSearchResults(ls: PythonLanguageServer, *args):
     definitions = args[0][1]
     results = getResults(args[0][0], definitions, args[0][2])
     return results
 
 
 @server.command(PythonLanguageServer.FETCH_SUMMARY)
-def fetchSummary(ls: PythonLanguageServer, *args):
+def computeSummary(ls: PythonLanguageServer, *args):
+    """
     config = RobertaConfig.from_pretrained("microsoft/codebert-base")
     tokenizer = RobertaTokenizer.from_pretrained(
         "microsoft/codebert-base", do_lower_case=False)
@@ -470,6 +465,14 @@ def fetchSummary(ls: PythonLanguageServer, *args):
     summary, length = inference(get_features(
         example, tokenizer), model, tokenizer)
     print("Summary generated is:", summary)
+    """
+
+    URL = "http://ec2-35-154-160-245.ap-south-1.compute.amazonaws.com:3000/summary"
+    PARAMS = {'code' : args[0][0]}
+    response = requests.post(url=URL, json=PARAMS)
+
+    j = json.loads(response.text)
+    summary = j["summary"]
     return summary
 
 
