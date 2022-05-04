@@ -31,4 +31,5 @@ def get_similarity(query, descriptions):
     results.sort(key=lambda x: -x[0])
     print(results)
 
-get_similarity("work", descriptions)
+print("ready")
+get_similarity("addition", descriptions)

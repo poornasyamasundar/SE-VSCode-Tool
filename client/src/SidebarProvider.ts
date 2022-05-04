@@ -66,7 +66,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         </head>
         <body>
           <h3>Search for Description</h3>
-          <input id="inputfield"></input>
+          <form id = "form" >
+            <input id="inputfield" type="text"></input>
+            <input id = "search" type = "submit" value = "Search">
+          </form>
           <div id="searchlist">
           </div> 
           <script type = "module" nonce="${nonce}" src="${scriptUri}"></script>

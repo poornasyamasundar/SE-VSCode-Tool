@@ -1,11 +1,13 @@
 "use strict";
 import * as net from "net";
 import * as path from "path";
+import { toUSVString } from "util";
 import * as vscode from 'vscode';
 
 let currentLine = -1;
 let lastChange = -1;
 let descriptionWriting = false;
+let num = 1;
 
 import { ExtensionMode, workspace } from "vscode";
 import {
@@ -409,6 +411,8 @@ async function changeDescription(sourceFile: vscode.TextDocument, position: vsco
 			'ACS-python.fetchSummary',
 			body,
 		);
+		//let description = ";lahgag" + num.toString();
+		//num++;
 		let i = 1;
 		let endDes = sourceFile.lineAt(position.line - i);
 
