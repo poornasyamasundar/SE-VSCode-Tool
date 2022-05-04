@@ -81,18 +81,7 @@ tokenizer = RobertaTokenizer.from_pretrained( "microsoft/codebert-base", do_lowe
 model = build_model( model_class = RobertaModel, config = config, tokenizer = tokenizer).to('cpu')
 
 querymodel = api.load("glove-wiki-gigaword-300")
-"""
-code = ''
-with open("model.py") as f:
-	lines = f.readlines()
-	for line in lines:
-		code += line
 
-print(code)
-example = [Example(source=code, target=None)]
-message, length = inference(get_features(example, tokenizer), model, tokenizer)
-print(message)
-"""
 
 def preprocess(s):
     return [i.lower() for i in s.split()]
@@ -116,33 +105,30 @@ print("Hello")
 score = 1 - spatial.distance.cosine(get_vector("s"), get_vector("addNum"))
 print("score = ", score)
 
+# using fast api
 app = FastAPI()
+
+# Define endpoints
 
 @app.get('/')
 def main():
 	return {"message": "success"}
 
+# Endpoint '/summary'
+# Generates Summary
 @app.post('/summary')
 async def summary( request:Body ):
-    print(request.code)
     example = [Example(source=request.code, target=None)] 
     message, length = inference(get_features(example, tokenizer), model, tokenizer)
-    print(message[0])
     return {"summary": message[0]}
 
+# Endpoint '/search'
+# returns the cosine between the vector representations of (query -> is the search string, document -> is the description)
 @app.post('/search')
 async def search( request:SearchBody ):
-    print("request = ", request)
-    print("request.query = ", request.query)
-    print("request.document = ", request.document)
-
     query = str(request.query)
     d = str(request.document)
-    print("query = ", query)
-    print("d = " , d)
     score = 1 - spatial.distance.cosine(get_vector(query), get_vector(d))
-    print("score = ", score)
-
     return {"score": str(score) }
 
 

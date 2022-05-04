@@ -1,12 +1,7 @@
 from urllib.request import pathname2url
 from pygls.server import LanguageServer
-from sqlalchemy import desc
-from whoosh.fields import Schema, TEXT
-from whoosh import index
 import os
 import os.path
-from whoosh import qparser, query, highlight
-from whoosh.analysis import StemmingAnalyzer
 import requests
 
 import os
@@ -22,9 +17,7 @@ import gensim.downloader as api
 import numpy as np
 
 
-def preprocess(s):
-    return [i.lower() for i in s.split()]
-
+# Python Lanuage Server Initialization
 class PythonLanguageServer(LanguageServer):
     GET_SEARCH_RESULTS = 'ACS-python.getSearchResults'
     FETCH_SUMMARY = 'ACS-python.fetchSummary'
@@ -33,6 +26,7 @@ class PythonLanguageServer(LanguageServer):
         super().__init__()
 
 
+# Start the server
 server = PythonLanguageServer()
 
 
@@ -45,53 +39,65 @@ def getSearchResults(ls: PythonLanguageServer, *args):
 
 @server.command(PythonLanguageServer.FETCH_SUMMARY)
 def computeSummary(ls: PythonLanguageServer, *args):
+    # The URL for the hosted endpoint
     URL = "http://ec2-35-154-160-245.ap-south-1.compute.amazonaws.com:3000/summary"
-    PARAMS = {'code' : args[0][0]}
-    response = requests.post(url=URL, json=PARAMS)
+    PARAMS = {'code': args[0][0]}
+    # post a request to the url, with params,
+    try:
+        print("before requesting")
+        response = requests.post(url=URL, json=PARAMS)
+        print("response = ", response)
+        # reponse contains the summary
+        j = json.loads(response.text)
+        summary = j["summary"]
+        return summary
+    except:
+        print("Exception occured")
 
-    j = json.loads(response.text)
-    summary = j["summary"]
-    return summary
 
+# returns vectors for a word using the gensim model
 def get_vector(model, s):
     return np.sum(np.array([model[i] for i in preprocess(s)]), axis=0)
 
+# convert the words into lower case
+
+
+def preprocess(s):
+    return [i.lower() for i in s.split()]
+
+
 def getResults(definitions, searchQuery):
+    # The URL for the hosted endpoint
     URL = "http://ec2-35-154-160-245.ap-south-1.compute.amazonaws.com:3000/search"
-    #model = api.load("glove-wiki-gigaword-300")
-    print("definitions = ", definitions)
     results = []
     for i in range(0, len(definitions), 2):
         functionDescription = definitions[i+1]
-
         PARAMS = {'query': searchQuery, 'document': functionDescription}
         try:
-            print("before sending response")
             response = requests.post(url=URL, json=PARAMS)
+            # match score between query string and the description
             descriptionScore = json.loads(response.text)
-            print("description = ", descriptionScore)
             descriptionScore = float(descriptionScore["score"])
-            print("after making it float", descriptionScore)
-            print("in try", descriptionScore)
         except:
             descriptionScore = 0
-        
+
         finalScore = descriptionScore
+        # store the description and the corresponding score
         results.append([finalScore, i])
-    
+
+    # sort the results based on the score
     results.sort(key=lambda x: -x[0])
-    print("results = ", results)
 
     sortedDefinitions = []
     count = 0
+
+    # sort the list of descriptions based on their scores
     for i in results:
-        print(i)
-        if( count == 4 ):
+        if(count == 4):
             break
-        if( i[0] > 0.4 ):
+        if(i[0] > 0.4):
             sortedDefinitions.append(definitions[i[1]])
             sortedDefinitions.append(definitions[i[1]+1])
             count += 1
-    
-    print(sortedDefinitions)
+
     return sortedDefinitions
