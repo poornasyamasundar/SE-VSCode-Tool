@@ -2,6 +2,15 @@
 
 _A VScode Extension for Code Summarization._
 
+# Description of the tool
+
+- The main purpose of our tool is to help developers with documentation. We built a VS Code extension that provides a summary of the code using the - CodeBERT Roberta Model.
+
+- We intend to provide live code summaries for every 4-5 lines of code written by a developer, which he can utilize as he sees fit. Furthermore, users can provide customized descriptions of the functions. 
+
+- We designed a UI for searching functions within the project based on their descriptions. Anytime we hover over a function name, the corresponding description will be displayed.
+
+
 # Technologies/Libraries Used
 
 -   ### Pygls
@@ -16,6 +25,8 @@ Used the Roberta Model for generating code summaries.
 ```
 Used a pretrained gensim model (glove-wiki-gigaword-300) for implementing the function description search feature.
 ```
+-   ### VS Code API
+-   ### TypeScript & Python
 
 
 
