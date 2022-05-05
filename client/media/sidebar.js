@@ -21,19 +21,21 @@
             }
         });
 
+    // populate the area with the results of the search
     const populateChildren = (arr) => {
         let elem = document.getElementById("searchlist");
         while (elem.firstChild) {
             elem.removeChild(elem.firstChild);
         }
-        for (var i in arr) {
+        for (let i = 0; i < arr.length; i++) {
             let child = document.createElement("div");
             child.classList.add("list-item");
-            //TODO:
+            // each div is clickable, which when clicked, navigates to the corresponding function defintion.
+            let loc = arr[i].location;
             child.addEventListener("click", () => {
                 vscode.postMessage({
                     command: "navigate",
-                    location: arr[i].location,
+                    location: loc,
                 });
             });
             child.innerHTML = `

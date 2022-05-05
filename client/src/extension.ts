@@ -1,7 +1,13 @@
 "use strict";
 import * as net from "net";
 import * as path from "path";
+import { toUSVString } from "util";
 import * as vscode from 'vscode';
+
+let startOfCurrentSet = -1;
+let mostRecentInCurrentSet= -1;
+let descriptionWriting = false;
+let num = 1;
 
 import { ExtensionMode, workspace } from "vscode";
 import {
@@ -33,7 +39,7 @@ function getClientOptions(): LanguageClientOptions
     };
 }
 
-// Start An LSP. A TCP server.
+// Start An Language Server. A TCP server.
 function startLanguageServerTCP(addr: number): LanguageClient
 {
 	const serveroptions: ServerOptions = () =>{
@@ -68,13 +74,15 @@ function startLangServer(
 	return new LanguageClient(command, serveroptions, getClientOptions());
 }
 
+
 //This map contains the map between function names and function descriptions of the current file
 export let functionDefinitionMap = new Map();
 
 // Extension Root directory.
 export let globalUri: vscode.Uri;
 
-// 
+// gets called on extension activation, 
+// Contains all the setup
 export function activate(context: vscode.ExtensionContext): void {
 
 	if( context.extensionMode === ExtensionMode.Development ){
@@ -91,34 +99,125 @@ export function activate(context: vscode.ExtensionContext): void {
 
 		client = startLangServer(pythonPath, ["-m", "server"], cwd);
 	}
-
+	getFunctionDefinitions();
+	// current context
 	context.subscriptions.push(client.start());
 	
+	// For displaying the sidebar, first create a sidebarProvider
 	const sidebarProvider = new SidebarProvider(context.extensionUri);
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider("ACS-python-sidebar",sidebarProvider)
 		);
-	
-	let disposable0 = vscode.commands.registerCommand('ACS-python.fetch', async () => {
+
+	// Register command for : start
+	let disposable = vscode.commands.registerCommand('ACS-python.start', async () => {
+		vscode.window.showInformationMessage('ACS is Running.');
+		// iniatialize
 		functionDefinitionMap.clear();
+		// get the mappings
 		await getFunctionDefinitions();
+		globalUri = context.globalStorageUri;
+	});
+	context.subscriptions.push(disposable);
+	
+	// Register command for : fetch
+	let disposable0 = vscode.commands.registerCommand('ACS-python.fetch', async () => {
+		// First clear the existing mapping for function name <=> function description
+		functionDefinitionMap.clear();
+		// Populate ^ again
+		await getFunctionDefinitions();
+		// Successful?
 		vscode.window.showInformationMessage('Successfully Fetched');
 	});
 	context.subscriptions.push(disposable0);
 
-	let disposable = vscode.commands.registerCommand('ACS-python.start', async () => {
-		vscode.window.showInformationMessage('ACS is Running.');
-		functionDefinitionMap.clear();
-		await getFunctionDefinitions();
-		globalUri = context.globalStorageUri;
-	});
-
+	// Register commmand for : getSummary
 	let disposable1 = vscode.commands.registerCommand('ACS-python.getSummary', async () => {
-		await changeDescription();
+		await generateDescription();
 	});
-
-	context.subscriptions.push(disposable);
 	context.subscriptions.push(disposable1);
+
+	// What happens when there's a change in current document?!
+	vscode.workspace.onDidChangeTextDocument(async function (event) 
+	{
+		// If the change is due to the insertion of a new comment by the extension, ignore.
+		if( descriptionWriting )
+		{
+			return;
+		}	
+
+		// if something has changed - Added or Deleted by the user.
+		if( event.contentChanges.length !== 0 )
+		{
+			// *A change can span many lines*
+			// currentChange -> the current line where change is being made.
+			let currentChange = event.contentChanges[0].range.start.line;
+			let sourceFile: vscode.TextDocument = event.document;
+			let line = '';
+			try {
+				line = sourceFile.lineAt(currentChange).text;
+			}
+			catch (e) {
+			}
+			var splitted = line.split(" ", 3);
+			if( splitted.length !== 0 )
+			{
+				if( splitted[0] === "def" )
+				{
+					insertDescriptionBox(currentChange);
+				}
+			}
+			
+			if (startOfCurrentSet === -1) {
+				startOfCurrentSet = currentChange;
+				mostRecentInCurrentSet = currentChange;
+			}
+			else 
+			{
+				// if the currentchange is made without breaking the set, i.e it is appended to the most recent change.
+				if (currentChange === mostRecentInCurrentSet || currentChange === mostRecentInCurrentSet + 1) {
+					// if we have reached the limit of 4 lines, generate the summary again
+					if (startOfCurrentSet + 4 <= currentChange) {
+						let content = '';
+						let sourceFile: vscode.TextDocument = event.document;
+						for (let i = startOfCurrentSet; i < currentChange; i++) {
+							try {
+								let endDes = sourceFile.lineAt(i);
+								content += endDes.text + '\n';
+							}
+							catch (e) {
+							}
+						}
+
+						console.log(content);
+						getFunctionBody(currentChange);
+						startOfCurrentSet = currentChange;
+					}
+					mostRecentInCurrentSet = currentChange;
+				}
+				else {
+					// if the current set is broken, i.e. the change is made somewhere else in the file..
+					let content = '';
+					let sourceFile: vscode.TextDocument = event.document;
+					for (let i = startOfCurrentSet; i <= mostRecentInCurrentSet; i++) {
+						try {
+							let endDes = sourceFile.lineAt(i);
+							content += endDes.text + '\n';
+						}
+						catch (e) {
+						}
+					}
+					startOfCurrentSet = currentChange;
+					// generate the summary for changes made so far, 
+					getFunctionBody(currentChange);
+					
+					// and re-initialize the set.
+					mostRecentInCurrentSet = currentChange;
+				}
+			}
+		}
+	});
+		
 
 	//This provides the hover.
 	vscode.languages.registerHoverProvider('python', {
@@ -148,7 +247,6 @@ async function getFunctionDefinitions()
 	{
 		return;
 	}
-
 	let document = activeEditor.document;
 	let u = document?.uri;
 	
@@ -203,9 +301,193 @@ async function getFunctionDefinitions()
 	}
 }
 
+// This inserts the description body on the corresponding function definition
+function insertDescriptionBox(lineNumber: number)
+{
+	// select the active editor
+	let textEditor = vscode.window.activeTextEditor;
+	if( textEditor )
+	{
+		// active document
+		let sourceFile = textEditor.document;
+		if( lineNumber !== 0 )
+		{
+			let endDes = sourceFile.lineAt(lineNumber-1);
+			if (endDes.text === "$\"\"\"") 
+			{
+				return;
+			}
+		}
+		// position for the description (line: lineNumber, character: 0)
+		let position = new vscode.Position(lineNumber, 0);
+		let content = "\"\"\"$\nFunction Description Goes here\n$\"\"\"\n";
+		
+		// replace the text
+		textEditor.edit(builder => {
+			builder.replace(new vscode.Range(position.line, 0, position.line, 0), content);
+		});
+	}
+}
+
+// Get the function body of the function enclosing the line: 'lineNumber'
+async function getFunctionBody(lineNumber: number)
+{
+	let functionStartLine = -1;
+	let functionEndLine = -1;
+
+	let textEditor = vscode.window.activeTextEditor;
+	if( textEditor )
+	{
+		let sourceFile = textEditor.document;
+		let ln = lineNumber;
+		
+		// Search for the keyword 'def by moving to the top.
+		while( ln !== 0 )
+		{
+			let line = '';
+			try{
+			line = sourceFile.lineAt(ln).text;
+			}
+			catch(e)
+			{}
+			var splitted = line.split(" ", 3);
+			if( splitted.length !== 0 )
+			{
+				if( splitted[0] === "def" )
+				{
+					functionStartLine = ln;
+					break;
+				}
+			}
+			ln -= 1;
+		}
+		try{
+			console.log(sourceFile.lineAt(functionStartLine).text);
+		}
+		catch(e)
+		{
+			return;
+		}
+
+		ln = lineNumber;
+		// search for the end of function, moving down and checking the indentation
+		while( true )
+		{
+			let line = '';
+			try{
+				line = sourceFile.lineAt(ln).text;
+			}
+			catch(e)
+			{
+				break;
+			}
+			if( line !== '' && line.substring(0, 4) !== "    " )
+			{
+				functionEndLine = ln-1;
+				break;
+			}
+			ln++;
+		}
+		if( functionEndLine === -1 )
+		{
+			functionEndLine = ln-1;
+		}
+
+		try{
+			console.log(sourceFile.lineAt(functionEndLine).text);
+		}
+		catch(e)
+		{
+			return;
+		}
+		
+		// if the current line isn't inside a function.. return
+		if( functionStartLine === -1 || functionEndLine === -1 )
+		{
+			return;
+		}
+
+		let body = '';
+		// get the body by iterating over the range
+		for( let i = functionStartLine; i <= functionEndLine ; i++ )
+		{
+			try{
+				body += sourceFile.lineAt(i).text + "\n";
+			}
+			catch(e)
+			{
+				return;
+			}
+		}
+
+		let startPosition = new vscode.Position(functionStartLine, 0);
+		if( body !== '' )
+		{
+			// Edit the description
+			changeDescription(textEditor.document, startPosition, body);
+		}
+	}
+}
+
+// fetches the new description and modifies the old description - replace if a description is present, add a new one if not.
+async function changeDescription(sourceFile: vscode.TextDocument, position: vscode.Position, body: string) 
+{
+	let textEditor = vscode.window.activeTextEditor;
+
+	if (textEditor) 
+	{
+		// fetch the description for the function
+		let description: string = await vscode.commands.executeCommand(
+			'ACS-python.fetchSummary',
+			body,
+		);
+		let i = 1;
+		let endDes = sourceFile.lineAt(position.line - i);
+
+		i++;
+		// if description already exists
+		if (endDes.text === "$\"\"\"") 
+		{
+			let temp = sourceFile.lineAt(position.line - i);
+			while (position.line - i >= 0 && temp.text !== "\"\"\"$") 
+			{
+				i++;
+				temp = sourceFile.lineAt(position.line - i);
+			}
+			// this changes should not be considered for onChangeTextDocument event triggers
+			descriptionWriting = true;
+			
+			// replace the old description with the new one.
+			await textEditor.edit(builder => {
+
+				builder.replace(new vscode.Range(position.line - i + 1, 0, position.line - 2, 1000), description);
+			});
+			descriptionWriting = false;
+
+		}
+		else 
+		{
+			// description body
+			description = "\"\"\"$\n" + description + "\n$\"\"\"\n";
+
+			descriptionWriting = true;
+
+			// place it above the function defintion
+			await textEditor.edit(builder => {
+				builder.replace(new vscode.Range(position.line, 0, position.line, 0), description);
+			});
+			descriptionWriting = false;
+
+		}
+		functionDefinitionMap.clear();
+		getFunctionDefinitions();
+	}
+}
+
+// fetch the defintion of a function, which is called/used at position: 'position' 
 async function getDefinition(document: vscode.TextDocument, position: vscode.Position )
 {
-	//fetch all the definitions
+	//fetch all the definitions of the function present at 'position'
 	const definitions = await vscode.commands.executeCommand<vscode.Location[]>
 	(
 		'vscode.executeDefinitionProvider',
@@ -217,19 +499,19 @@ async function getDefinition(document: vscode.TextDocument, position: vscode.Pos
 	{
 		//get the source file( the file that contains the definition)
 		let sourceFile = await vscode.workspace.openTextDocument(definition.uri);
-		
 		if( definition.range.start.line !== 0 )
 		{
 			//get the description from the line above the declaration
 			let description = fetchDescription(sourceFile, definition);
 	
-			//changeDescription(definition, "this description was changed");
 			return [description, definition.uri.path];
 		}		
 	}
 
 }
 
+
+// Given the location of the defintion of a function, get the corresponding description
 function fetchDescription(
 	sourceFile: vscode.TextDocument,
 	definition: vscode.Location
@@ -254,7 +536,9 @@ function fetchDescription(
 
 }
 
-async function changeDescription(
+// Given the selection (start line and end line) -> (indicates the function body), execute the fetchsummary command 
+// and place the generated description
+async function generateDescription(
 ){
 	let textEditor = vscode.window.activeTextEditor;
 	if (textEditor) {
@@ -278,16 +562,18 @@ async function changeDescription(
 			}
 			textEditor.edit(builder => {
 
-				builder.replace(new vscode.Range(position.line - i + 1, 0, position.line - 2, 1000), description[0]);
+				builder.replace(new vscode.Range(position.line - i + 1, 0, position.line - 2, 1000), description);
 			});
 		}
 		else {
-			description = "\"\"\"$\n" + description[0] + "\n$\"\"\"\n";
+			description = "\"\"\"$\n" + description + "\n$\"\"\"\n";
 			textEditor.edit(builder => {
 				builder.replace(new vscode.Range(position.line, 0, position.line, 0), description);
 			});
 		}
 	}
+	functionDefinitionMap.clear();
+	getFunctionDefinitions();
 }
 
 export function deactivate() { }

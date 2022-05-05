@@ -54,7 +54,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     // Use a nonce to only allow a specific script to be run.
     const nonce = getNonce();
-    
+    // html for the side bar
     return `<!DOCTYPE html>
 			<html lang="en">
         <head>
@@ -66,7 +66,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         </head>
         <body>
           <h3>Search for Description</h3>
-          <input id="inputfield"></input>
+          <form id = "form" >
+            <input id="inputfield" type="text"></input>
+            <input id = "search" type = "submit" value = "Search">
+          </form>
           <div id="searchlist">
           </div> 
           <script type = "module" nonce="${nonce}" src="${scriptUri}"></script>
@@ -74,23 +77,27 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           </html>`;
         }
       }
+    
+// Sidebar uses this for fetching function descriptions (and their locations) which best match the search query.
 async function getResults(searchQuery: string, webview: vscode.WebviewView)
 {
     let u = vscode.Uri.joinPath(globalUri);
 			let params:string[] = [];
+      // create params for easier processing.
 			functionDefinitionMap.forEach((value: string, key: string) => 
 			{
 				params.push(key);
 				params.push(value[0]);
 			});
-			console.log(params);
+
+      // Get Search results, basically has text similarity implemented under the hood. 
+      // For each function description, a simiarity percentage with the search query, is generated.
 			let result: string[] = await vscode.commands.executeCommand(
 				'ACS-python.getSearchResults',
 				u.path,
 				params,
 				searchQuery,
 			);
-
 
       let items = [];
       for( let i = 0 ; i < result.length ; i++ )
@@ -100,5 +107,7 @@ async function getResults(searchQuery: string, webview: vscode.WebviewView)
 					items.push({"funcName": result[i], "location": functionDefinitionMap.get(result[i])[1], "description": result[i+1]});
 				}
 			}
+      // postMessage helps in communication between the extension and the js file of sidebar.
+      // items has the best matched descriptions, which then is posted to the js file to populate the results area.
       webview.webview.postMessage({command:'searchresult',result:items});
 }
