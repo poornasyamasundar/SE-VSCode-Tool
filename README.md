@@ -10,6 +10,13 @@ _A VScode Extension for Code Summarization._
 
 - We designed a UI for searching functions within the project based on their descriptions. Anytime we hover over a function name, the corresponding description will be displayed.
 
+# Any existing solutions and Novelty of our project :
+
+- Other languages such as C++ and Java have extensions of this type. Python is the most commonly used language, so we built a VS code extension for it.
+
+- As part of our project, we have implemented a new feature that allows users to search across our projects by function.
+
+
 
 # Technologies/Libraries Used
 
