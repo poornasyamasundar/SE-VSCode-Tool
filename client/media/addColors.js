@@ -30,9 +30,6 @@
         }
     });
 
-    /**
-     * @param {Array<{ value: string }>} colors
-     */
     function updateColorList(colors) {
         const ul = document.querySelector('.color-list');
         ul.textContent = '';

@@ -1,6 +1,7 @@
 //const { VersionedTextDocumentIdentifier } = require("vscode-languageclient");
 //import { VersionedTextDocumentIdentifier } from "vscode-languageclient";
 
+// this function handles the search functionality of the webview
 (function () 
     {
         const vscode = acquireVsCodeApi();
